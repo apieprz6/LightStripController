@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+  <section>
+    <nav>
+      <div class="topnav">
+        <div class="container" onclick="menuIconChange(this)">
+          <div class="bar1"></div>
+          <div class="bar2"></div>
+          <div class="bar3"></div>
+        </div>
+        <div id="myLinks">
+          <a href="music">Music Mode</a>
+          <a href="color">Color Mode</a>
+          <a href="temperature">Temperature Mode</a>
+        </div>
+      </div>
+
+    </nav>
+
+    <content>
+      <div id="alertBanner" , class="alertBanner" , style="display: none;">
+        <p style="padding-right: 10px;">This page is outdated, please refresh the page to make changes.</p>
+        <button onClick="window.location.reload();">Refresh Page</button>
+      </div>
+      <div id="pageData" , class="pageContainer">
+        <h1>Music Mode</h1>
+
+        <div class="freqColorSelect">
+          <div>
+            <label for="bass">Bass color:</label>
+            <select name="bass" id="bass" onchange="setSliderColor(this)">
+              <option selected="selected" value="red">Red</option>
+              <option value="blue">Blue</option>
+              <option value="green">Green</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <div>
+            <label for="mid">Mid color:</label>
+            <select name="mid" id="mid" onchange="setSliderColor(this)">
+              <option value="red">Red</option>
+              <option selected="selected" value="blue">Blue</option>
+              <option value="green">Green</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <div>
+            <label for="high">High color:</label>
+            <select name="high" id="high" onchange="setSliderColor(this)">
+              <option value="red">Red</option>
+              <option value="blue">Blue</option>
+              <option selected="selected" value="green">Green</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="advancedSetting">
+          <div class="slidecontainer">
+            <div style="display: flex;">
+              <p>Bass weight: <span id="bassValue">%bassSliderValue%</span></p>
+              <button onclick="defualtSlider(document.getElementById('bassWeight'), document.getElementById('bassValue'))">Defualt</button>
+            </div>
+            <input type="range" min="0" max="100" value="%bassSliderValue%" class="slider" id="bassWeight">
+          </div>
+          <div class="slidecontainer">
+            <p>Mid weight: <span id="midValue">20</span></p>
+            <button onclick="defualtSlider(document.getElementById('midWeight'), document.getElementById('midValue'))">Defualt</button>
+            <input type="range" min="0" max="100" value="20" class="slider" id="midWeight">
+          </div>
+          <div class="slidecontainer">
+            <p>Low weight: <span id="highValue">20</span></p>
+            <button onclick="defualtSlider(document.getElementById('highWeight'), document.getElementById('highValue'))">Defualt</button>
+            <input type="range" min="0" max="100" value="20" class="slider" id="highWeight">
+          </div>
+        </div>
+      </div>
+
+    </content>
+  </section>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script>
+    function menuIconChange(icon) {
+      icon.classList.toggle("change");
+      let links = document.getElementById("myLinks");
+      if (links.style.display === "block") {
+        links.style.display = "none";
+      } else {
+        links.style.display = "block";
+      }
+    }
+  </script>
+
+  <script>
+    function defualtSlider(slider, value) {
+      if(slider.id == "bassWeight") {
+        slider.value = 100;
+        value.innerHTML = 100;
+      }
+      else {
+        slider.value = 20;
+        value.innerHTML = 20;
+      }
+    }
+
+    function getColor(select) {
+      if(select.value == "red") {
+        return "#eb584d"
+      }
+      else if (select.value == "blue") {
+        return "#516ee0"
+      }
+      else if (select.value == "green") {
+        return "#51e06b"
+      }
+      else {
+        return "#919090"
+      }
+    }
+
+    function setSliderColor(select) {
+      if(select.id == "bass") {
+        document.getElementById("bassWeight").style.backgroundColor = getColor(select)
+      }
+      else if (select.id == "mid") {
+        document.getElementById("midWeight").style.backgroundColor = getColor(select)
+      }
+      else {
+        document.getElementById("highWeight").style.backgroundColor = getColor(select)
+      }
+      sendData()
+    }
+
+    let bassSlider = document.getElementById("bassWeight");
+    let midSlider = document.getElementById("midWeight");
+    let highSlider = document.getElementById("highWeight");
+    let bassValue = document.getElementById("bassValue");
+    let midValue = document.getElementById("midValue");
+    let highValue = document.getElementById("highValue");
+    let bassSelect = document.getElementById("bass")
+    let midSelect = document.getElementById("mid")
+    let highSelect = document.getElementById("high")
+
+    bassSlider.style.backgroundColor = getColor(bassSelect);
+    midSlider.style.backgroundColor = getColor(midSelect);
+    highSlider.style.backgroundColor = getColor(highSelect);
+
+
+    bassSlider.oninput = function () {
+      bassValue.innerHTML = this.value;
+      sendData();
+    }
+    midSlider.oninput = function () {
+      midValue.innerHTML = this.value;
+      sendData();
+    }
+    highSlider.oninput = function () {
+      highValue.innerHTML = this.value;
+      sendData();
+    }
+
+
+    function sendData() {
+      data = {
+        bassColor: bassSelect.value,
+        midColor: midSelect.value,
+        highColor: highSelect.value,
+        bassWeight: Math.floor(bassSlider.value/100 * 255),
+        midWeight: Math.floor(midSlider.value/100 * 255),
+        highWeight: Math.floor(highSlider.value/100 * 255)
+      }
+      console.log("sending...", data)
+      $.post(window.location.origin + '/musicData', data, (data, status) => {
+        console.log(`${data} and status is ${status}`);
+        let banner = document.getElementById("alertBanner");
+        banner.style.display = 'none';
+      }).fail(err => {
+        let banner = document.getElementById("alertBanner");
+        banner.style.display = 'flex';
+      })
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+  <section>
+    <nav>
+      <div class="topnav">
+        <div class="container" onclick="menuIconChange(this)">
+          <div class="bar1"></div>
+          <div class="bar2"></div>
+          <div class="bar3"></div>
+        </div>
+        <div id="myLinks">
+          <a href="music">Music Mode</a>
+          <a href="color">Color Mode</a>
+          <a href="temperature">Temperature Mode</a>
+        </div>
+      </div>
+
+    </nav>
+
+    <content>
+      <div id="alertBanner", class="alertBanner", style="display: none;">
+        <p style="padding-right: 10px;">This page is outdated, please refresh the page to make changes.</p>
+        <button onClick="window.location.reload();">Refresh Page</button>
+      </div>
+      <div id="pageData", class="pageContainer">
+        <h1>Color Mode</h1>
+
+        <div class="slidecontainer">
+          <p>Custom range slider:</p>
+          <input type="range" min="0" max="1529" value="0" class="slider" id="colorPicker">
+          <p>Value: <span id="sliderValue"></span></p>
+        </div>
+      </div>
+      
+    </content>
+  </section>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script>
+    function menuIconChange(icon) {
+      icon.classList.toggle("change");
+      let links = document.getElementById("myLinks");
+      if (links.style.display === "block") {
+        links.style.display = "none";
+      } else {
+        links.style.display = "block";
+      }
+    }
+  </script>
+  <script>
+    let slider = document.getElementById("colorPicker");
+    let output = document.getElementById("sliderValue");
+    const URL = window.location.origin + '/colorData';
+    slider.oninput = function () {
+      console.log("slider moving, url is: ", URL);
+      output.innerHTML = this.value;
+      let colorSector = Math.floor(this.value / 255);
+      let red;
+      let green;
+      let blue;
+      if (colorSector == 0) {
+        red = 255;
+        green = this.value % 255;
+        blue = 0;
+      } else if (colorSector == 1) {
+        red = 255 - this.value % 255;
+        green = 255;
+        blue = 0;
+      } else if (colorSector == 2) {
+        red = 0;
+        green = 255;
+        blue = this.value % 255;
+      } else if (colorSector == 3) {
+        red = 0;
+        green = 255 - this.value % 255;
+        blue = 255;
+      } else if (colorSector == 4) {
+        red = this.value % 255;
+        green = 0;
+        blue = 255;
+      } else if (colorSector == 5) {
+        red = 255;
+        green = 0;
+        blue = 255 - this.value % 255;
+      } else {
+        console.log("invalid color selection");
+        red = 0;
+        green = 0;
+        blue = 0;
+      }
+      console.log("Red: " + red + " Blue: " + blue + " Green: " + green);
+      output.innerHTML = slider.value;
+
+      $.post(URL, { red: red, blue: blue, green: green }, (data, status) => {
+        console.log(`${data} and status is ${status}`);
+        let banner = document.getElementById("alertBanner");
+        banner.style.display = 'none';
+      }).fail(err => {
+        let banner = document.getElementById("alertBanner");
+        banner.style.display = 'flex';
+      })
+    }
+  </script>
+
+
+
+</body>
+
+</html>
