@@ -2,6 +2,10 @@
 #include <WiFi.h>
 #include <SPIFFS.h>
 #include <ESPAsyncWebServer.h>
+#include "arduinoFFT.h"
+
+#define SAMPLES 256
+#define SAMPLING_FREQUENCY 20000
 
 
 // Replace with your network credentials
@@ -50,6 +54,12 @@ double bassWeight = 255;
 
 String mode = musicPage;
 
+arduinoFFT FFT = arduinoFFT();
+unsigned int sampling_period_us;
+unsigned long microseconds;
+double vReal[SAMPLES];
+double vImag[SAMPLES];
+
 String processor(const String& var) {
   if (var == "bassSliderValue") {
     int temp = (int)(bassWeight / 255 * 100);
@@ -65,6 +75,7 @@ void setup()
 {
   Serial.begin(9600);
 
+  sampling_period_us = round(1000000*(1.0/SAMPLING_FREQUENCY));
   if(!SPIFFS.begin(true)){
     Serial.println("An Error has occurred while mounting SPIFFS");
     return;
@@ -192,27 +203,85 @@ void loop()
     ledcWrite(greenChannel, greenValue); // set the brightness of the LED
   }
   else if (mode == musicPage) {
-    digitalWrite(resetPin, HIGH);
-    digitalWrite(resetPin, LOW);
-    for (int i=0;i<7;i++){
-      digitalWrite(strobePin, LOW);
-      delay(8);
-      spectrumValue[i]=analogRead(analogPin);
-      spectrumValue[i]=constrain(spectrumValue[i], filter, 1023);
-      spectrumValue[i]=map(spectrumValue[i], filter,1023,0,MAXBRIGHTNESS);
-      // Serial.print(spectrumValue[i]);
-      // Serial.print(" ");
-      digitalWrite(strobePin, HIGH);
-    }
+    // digitalWrite(resetPin, HIGH);
+    // digitalWrite(resetPin, LOW);
+    // for (int i=0;i<7;i++){
+    //   digitalWrite(strobePin, LOW);
+    //   delay(8);
+    //   spectrumValue[i]=analogRead(analogPin);
+    //   spectrumValue[i]=constrain(spectrumValue[i], filter, 1023);
+    //   spectrumValue[i]=map(spectrumValue[i], filter,1023,0,MAXBRIGHTNESS);
+    //   // Serial.print(spectrumValue[i]);
+    //   // Serial.print(" ");
+    //   digitalWrite(strobePin, HIGH);
+    // }
     // Serial.println();
-    double averageBass = ((double)spectrumValue[0] * .75 +  (double)spectrumValue[1] * .25);
-    double averageMid = (spectrumValue[3] + spectrumValue[4]) / 2;
-    double averageHigh = (spectrumValue[5] + spectrumValue[6]) / 2;
+
+    /*SAMPLING*/
+    for(int i=0; i<SAMPLES; i++)
+    {
+      microseconds = micros();    //Overflows after around 70 minutes!
+
+      int sample = analogRead(analogPin);
+      vReal[i] = analogRead(analogPin) - 2048;
+      vImag[i] = 0;
+      Serial.println(analogRead(analogPin));
+    
+      // while(micros() - microseconds < sampling_period_us){}
+      while(micros() < (microseconds + sampling_period_us)){}
+    }
+
+    /*FFT*/
+    FFT.Windowing(vReal, SAMPLES, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+    FFT.Compute(vReal, vImag, SAMPLES, FFT_FORWARD);
+    FFT.ComplexToMagnitude(vReal, vImag, SAMPLES);
+    // double peak = FFT.MajorPeak(vReal, SAMPLES, SAMPLING_FREQUENCY);
+
+    /*PRINT RESULTS*/
+    //Serial.println(peak);     //Print out what frequency is the most dominant.
+    double averageBass = 0;
+    int nBass = 0;
+    double averageMid = 0;
+    int nMid = 0;
+    double averageHigh = 0;
+    int nHigh = 0;
+    for(int i=0; i<(SAMPLES/2); i++)
+    {
+      double frequency = (i * 1.0 * SAMPLING_FREQUENCY) / SAMPLES;
+      // Serial.println(frequency,1);
+      // Serial.println(vReal[i], 1);
+      if (frequency > 20 && frequency <= 250) { //Bass
+        nBass++;
+        averageBass += vReal[i];
+      }
+      else if (frequency <= 4000) {
+        nMid++;
+        averageMid += vReal[i];
+      }
+      else if (frequency > 4000){
+        nHigh++;
+        averageHigh += vReal[i];
+      }
+        /*View all these three lines in serial terminal to see which frequencies has which amplitudes*/
+         
+        // Serial.print((i * 1.0 * SAMPLING_FREQUENCY) / SAMPLES, 1);
+        // Serial.print(" ");
+        // Serial.println(vReal[i], 1);    //View only this line in serial plotter to visualize the bins
+    }
+    // Serial.println(averageBass/nBass);
+    averageBass = (averageBass / nBass);
+    averageMid = (averageMid / nMid);
+    averageHigh = (averageHigh / nHigh);
+    // Serial.printf("Bass: %lf, Mid: %lf, High %lf\n", averageBass, averageMid, averageHigh);
+
+    // // double averageBass = ((double)spectrumValue[0] * .75 +  (double)spectrumValue[1] * .25);
+    // // double averageMid = (spectrumValue[3] + spectrumValue[4]) / 2;
+    // // double averageHigh = (spectrumValue[5] + spectrumValue[6]) / 2;
     if (bassNone) averageBass = 0;
     if (midNone) averageMid = 0;
     if (highNone) averageHigh = 0;
-    ledcWrite(bassChannel, (int)(averageBass * ((double)bassWeight / MAXBRIGHTNESS)));
-    ledcWrite(midChannel, (int)(averageMid * ((double)midWeight / MAXBRIGHTNESS)));
-    ledcWrite(highChannel, (int)(averageHigh * ((double)highWeight / MAXBRIGHTNESS)));
+    // ledcWrite(bassChannel, (int)(averageBass * ((double)bassWeight / MAXBRIGHTNESS)));
+    // ledcWrite(midChannel, (int)(averageMid * ((double)midWeight / MAXBRIGHTNESS)));
+    // ledcWrite(highChannel, (int)(averageHigh * ((double)highWeight / MAXBRIGHTNESS)));
   }
 }
